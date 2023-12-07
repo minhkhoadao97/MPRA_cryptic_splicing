@@ -5,6 +5,7 @@ import sys, os
 import re
 
 
+##################################################################################################################################################################
 def find_RT_error(cigar, forward_read):
 	# function to identify RT error via complement nucleotide at position 289 in sequencing read
 	
@@ -53,14 +54,17 @@ def read_fasta(fn):
 
 	return seq
 
+##################################################################################################################################################################
+
+# import bam_file
 bam_file = sys.argv[1]
 bam = pysam.AlignmentFile(bam_file, 'r')
 
 basename = bam_file.split('/')[-1]
 sample = '_'.join(basename.split('.')[0].split('_')[0:1])
 reporter = '_'.join(basename.split('.')[0].split('_')[-2:])
-ref_seq = read_fasta(f'/storage/mustoe/home/mkdao/3UTR_L1_ref_seq/{reporter}.fa')
-#ref_seq = read_fasta(f'{reporter}.fa')
+# import reference sequence
+ref_seq = read_fasta(f'3UTR_L1_ref_seq/{reporter}.fa')
 
 df = pd.DataFrame(columns = ['read', 'cigar', 'RT_error', 'filtering', 'read_length', 'seq5', 'seq3', 'pos5', 'pos3', 'intron_length'])
 df_idx = 0
@@ -71,14 +75,11 @@ for read in bam:
 		exit()
 
 	RT_error = find_RT_error(read.cigarstring, read.get_forward_sequence())
-	#error_dict[read.query_name.split(' ')[0]] = RT_error
-	#continue
 
 	filtering = filter_cigar(read.cigarstring)
 
 	current_pos = 0
 	
-	#read_name.append(read.query_name.split(' ')[0])
 	_introns = []
 
 	digits = re.findall('[0-9]+', read.cigarstring)
@@ -132,9 +133,5 @@ for read in bam:
 		df.loc[df_idx] = _row
 		df_idx += 1				
 
-
-#df = pd.read_csv(f'JUNCTION_FROM_ALIGNMENT/{sample}_{reporter}_junction_sequences.txt', sep = '\t', \
-#		names = ['read', 'cigar', 'RTerror', 'cigar_check', 'read_length', 'seq5', 'seq3', 'pos5', 'pos3', 'intron_length'])
-#df['RTerror'] = df['read'].apply(lambda g: error_dict[g])
-#print(df.sort_values(by='RTerror'))
+# ouptut text file with classification
 df.to_csv(f'JUNCTION_FROM_ALIGNMENT/{sample}_{reporter}_junction_sequences.txt', sep = '\t', index = False, header = False) 

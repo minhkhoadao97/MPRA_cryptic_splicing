@@ -2,6 +2,8 @@ import pandas as pd
 from Bio import SeqIO
 import sys, os
 
+# codes to divide merged fastq files into sub-files for each reporter
+
 report_file = sys.argv[1]
 name = report_file.split('.')[0]
 fastq_file = sys.argv[2]

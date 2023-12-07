@@ -6,11 +6,14 @@ from os.path import basename, splitext
 from Bio.Seq import reverse_complement
 import edlib
 
-#######################################
+"""
+Code for demultiplexing raw sequencing output for PTRE-seq library
+"""
 
+##################################################################################################################################################################
 def match(fastq_file, barcode_handle, re_seq, file_format='fastq'):
 	
-	reader = SeqIO.index(fastq_file, file_format)
+	reader = SeqIO.index(fastq_file, file_format) # read fastq file
 
 	read = []	
 	read_type = []
@@ -32,32 +35,27 @@ def match(fastq_file, barcode_handle, re_seq, file_format='fastq'):
 
 		for reporter, _barcode in barcodes.items():
 			
-			barcode = 'CGAG' + _barcode + 'GGTA'
-			alignment = edlib.align(barcode, seq, mode = 'HW')
+			barcode = 'CGAG' + _barcode + 'GGTA' # add 4 nucleotide upstream and downstream of barcode  
+			alignment = edlib.align(barcode, seq, mode = 'HW') # align barcode
 			p = reporter.split('_')[0]	
 
+			# if barcode perfectly matches, immediately assign read to that barcode/reporter
 			if alignment['editDistance'] == 0:
-				#print(alignment)
-				# immediately assign the read to the best reporter
 				best_barcode_dist = alignment['editDistance']
 				best_reporter = reporter
 		
-				# align regulatory elements
 				reseq = re_seq[p]		
 				alignment_re = edlib.align(reseq, seq, mode = 'HW')
 				best_re_dist = alignment_re['editDistance']
-				#print(reporter, barcode, reseq, alignment_re, seq)	
-				# escape loop
 				break		
-	
+
+			# if there is no perfect match, go through all barcode with 1 mismatch, align the 
+			# regulatory element sequence to identify the most likely barcode	
 			elif alignment['editDistance'] == 1:	
-				#print(alignment)
 				# assign barcode dist to 1
 				best_barcode_dist = 1
 				reseq = re_seq[p]		
 				alignment_re = edlib.align(reseq, seq, mode = 'HW')
-				#print(reporter, barcode, reseq, alignment_re, seq)			
-				#print(alignment_re['editDistance'], best_dist)		
 				# loop to all barcode with 1 mismatch and find the RE with the best alignment
 				if alignment_re['editDistance'] <= best_re_dist:
 					best_re_dist = alignment_re['editDistance']
@@ -99,23 +97,24 @@ if __name__== '__main__':
 	
 	start_time = time.time()
 	args = parseArgs()
-	# read RE seq
+
+	# import sequence for regulatory elements
 	all_re_seq = {}
 	with open('all_re_seq.txt', 'r') as f:
 		for line in f:
 			spl = line.rstrip().split('\t')
 			all_re_seq[spl[0]] = spl[1]	
-	# read barcode seq
+	# import sequence for barcodes
 	barcodes = {}
 	with open(args.barcode_file, 'r') as f:
 		for line in f:
 			spl = line.rstrip().split('\t')
 			barcodes[spl[0]] = spl[1]
 
-	# find barcode for each  
+	# align sequencing reads to barcodes and regulatory elements  
 	read, read_type, read_len, reporters = match(args.merged, barcodes, all_re_seq)
 
-	# write	
+	# write	output for fastq file
 	with open(args.outfile, 'w') as out:
 		for name, l, t, re in zip(read, read_len, read_type, reporters):
 			out.write(f'{name}\t{l}\t{t}\t{re}\n')
